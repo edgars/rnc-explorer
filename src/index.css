@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Inspirado em skalena.com.br: fundo azul profundo + acento água/ciano (IA, fluidez) */
+    --background: 222 42% 6%;
+    --foreground: 210 25% 96%;
+    --card: 222 38% 9%;
+    --card-foreground: 210 25% 96%;
+    --popover: 222 36% 8%;
+    --popover-foreground: 210 25% 96%;
+    --primary: 187 78% 48%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 222 28% 14%;
+    --secondary-foreground: 210 20% 94%;
+    --muted: 222 22% 13%;
+    --muted-foreground: 215 14% 58%;
+    --accent: 187 32% 16%;
+    --accent-foreground: 210 25% 96%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 222 24% 16%;
+    --input: 222 24% 14%;
+    --ring: 187 78% 52%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased font-sans;
+    font-optical-sizing: auto;
+  }
+
+  ::selection {
+    @apply bg-primary/25 text-foreground;
+  }
+}
+
+/* React Flow: theme-aligned controls */
+.react-flow__controls {
+  @apply overflow-hidden rounded-md border border-border bg-card shadow-sm;
+}
+
+.react-flow__controls-button {
+  @apply border-0 border-b border-border bg-transparent text-foreground;
+}
+
+.react-flow__controls-button:last-child {
+  @apply border-b-0;
+}
+
+.react-flow__controls-button:hover {
+  @apply bg-accent text-foreground;
+}
+
+.react-flow__controls-button svg {
+  @apply max-h-3.5 max-w-3.5 fill-current;
+}
+
+.react-flow__minimap-mask {
+  fill: hsl(var(--background) / 0.65);
+}
+
+.react-flow__minimap-node {
+  @apply fill-muted-foreground/40 stroke-border;
+}
