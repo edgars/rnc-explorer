@@ -213,7 +213,7 @@ export async function parseProjectZip(file: File, onProgress?: (stepIndex: numbe
   onProgress?.(2);
   logger.debug("ZIP parse step 2: read text files", { taskCount: tasks.length });
   const settled = await Promise.all(tasks);
-  const results = settled.filter((x): x is ReadOk => x !== null).sort((a, b) => a.path.localeCompare(b.path));
+  const results = settled.filter((x): x is ReadOk => x !== null).sort((a, b) => a.path.localeCompare(b.path, "pt-BR"));
 
   onProgress?.(3);
   logger.debug("ZIP parse step 3: build tree & metrics");
@@ -300,7 +300,7 @@ function buildTree(paths: string[]): FileTreeNode {
     if (!n.children) return;
     n.children.sort((a, b) => {
       if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
-      return a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name, "pt-BR");
     });
     for (const c of n.children) sortChildren(c);
   };
@@ -318,4 +318,13 @@ export function fileTreeToString(node: FileTreeNode, indent = ""): string {
     }
   }
   return lines.join("\n");
+}
+
+/** Árvore textual limitada em linhas (evita estourar o contexto do LLM em projetos grandes). */
+export function fileTreeToStringBounded(node: FileTreeNode, maxLines: number): string {
+  const full = fileTreeToString(node);
+  const lines = full.split("\n");
+  if (lines.length <= maxLines) return full;
+  const omitted = lines.length - maxLines;
+  return `${lines.slice(0, maxLines).join("\n")}\n\n… (${omitted} linhas omitidas — projeto muito grande; use FILE_PATH_LIST para caminhos exatos.)`;
 }

@@ -2,7 +2,6 @@ import { BadgeCheck, Braces, ListTree, Workflow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/CodeBlock";
@@ -135,15 +134,25 @@ export function FileInspectorSheet(props: {
               ) : null}
 
               <div className="flex min-h-0 flex-1 flex-col gap-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
                   <Braces className="h-3.5 w-3.5" />
                   {t("inspector.source")}
                 </div>
-                <ScrollArea className={cn("min-h-[200px] flex-1 rounded-md border border-border")}>
-                  <div className="p-2">
-                    <CodeBlock code={source} language={highlightLang} showLineNumbers />
+                <div
+                  className={cn(
+                    "min-h-0 flex-1 overflow-auto rounded-md border border-border",
+                    "[scrollbar-gutter:stable]",
+                  )}
+                >
+                  <div className="w-max min-w-full p-2">
+                    <CodeBlock
+                      code={source}
+                      language={highlightLang}
+                      showLineNumbers
+                      wrapLongLines={false}
+                    />
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             </>
           )}

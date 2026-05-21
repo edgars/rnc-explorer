@@ -65,7 +65,7 @@ function layerForPath(path: string, analysis: ArchitectureAnalysis | null): Macr
 }
 
 /**
- * Nós para o fluxo: arquivo atual + outros ficheiros do projeto referenciados por imports.
+ * Nós para o fluxo: arquivo atual + outros arquivos do projeto referenciados por imports.
  * Ordenados por camada (UI → … → base de dados) para leitura esquerda‑direita.
  */
 export function buildInspectorDependencyFlow(
@@ -103,7 +103,7 @@ export function buildInspectorDependencyFlow(
     const d = layerOrder(a.layer) - layerOrder(b.layer);
     if (d !== 0) return d;
     if (a.isCurrent !== b.isCurrent) return a.isCurrent ? 1 : -1;
-    return a.shortLabel.localeCompare(b.shortLabel);
+    return a.shortLabel.localeCompare(b.shortLabel, "pt-BR");
   });
   if (sorted.length <= 8) return sorted;
   const cur = sorted.find((n) => n.isCurrent);
@@ -112,6 +112,6 @@ export function buildInspectorDependencyFlow(
     const d = layerOrder(a.layer) - layerOrder(b.layer);
     if (d !== 0) return d;
     if (a.isCurrent !== b.isCurrent) return a.isCurrent ? 1 : -1;
-    return a.shortLabel.localeCompare(b.shortLabel);
+    return a.shortLabel.localeCompare(b.shortLabel, "pt-BR");
   });
 }

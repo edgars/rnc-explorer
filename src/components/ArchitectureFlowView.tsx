@@ -45,7 +45,7 @@ function collectLayerPaths(analysis: ArchitectureAnalysis, layerId: MacroLayerId
     seen.add(p);
     out.push(p);
   }
-  out.sort((a, b) => a.localeCompare(b));
+  out.sort((a, b) => a.localeCompare(b, "pt-BR"));
   return out.slice(0, 120);
 }
 
@@ -123,7 +123,7 @@ function collectMicroDrillSubgraph(analysis: ArchitectureAnalysis, layer: MacroL
     const la = MACRO_LAYER_IDS.indexOf(a.layerId);
     const lb = MACRO_LAYER_IDS.indexOf(b.layerId);
     if (la !== lb) return la - lb;
-    return a.label.localeCompare(b.label);
+    return a.label.localeCompare(b.label, "pt-BR");
   });
 
   const nodes: Node[] = sorted.map((n, i) => ({

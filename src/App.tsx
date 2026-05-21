@@ -292,7 +292,7 @@ export default function App() {
         });
       } catch (e) {
         progressApi.fail();
-        const msg = e instanceof Error ? e.message : "Unknown error";
+        const msg = e instanceof Error ? e.message : t("errors.unknown");
         logger.error("ZIP import failed", { file: file.name, error: e });
         toast({ variant: "destructive", title: t("toast.zipFailTitle"), description: msg });
       }
@@ -350,7 +350,7 @@ export default function App() {
       });
     } catch (e) {
       progressApi.fail();
-      const msg = e instanceof Error ? e.message : "Unknown error";
+      const msg = e instanceof Error ? e.message : t("errors.unknown");
       logger.error("Architecture analysis failed", { provider: activeLlmContext.provider, model: activeLlmContext.model, error: e });
       toast({ variant: "destructive", title: t("toast.analysisFailTitle"), description: msg });
     }

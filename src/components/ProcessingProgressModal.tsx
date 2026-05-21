@@ -8,22 +8,22 @@ import { cn } from "@/lib/utils";
 export type ProgressStepDef = { id: string; label: string };
 
 export const ZIP_PARSE_STEPS: ProgressStepDef[] = [
-  { id: "load", label: "Loading ZIP archive" },
-  { id: "scan", label: "Scanning & filtering entries" },
-  { id: "read", label: "Reading text file contents" },
-  { id: "index", label: "Building tree, snippets & metrics" },
+  { id: "load", label: "Carregando arquivo ZIP" },
+  { id: "scan", label: "Varrendo e filtrando entradas" },
+  { id: "read", label: "Lendo conteúdo dos arquivos de texto" },
+  { id: "index", label: "Montando árvore, trechos e métricas" },
 ];
 
 export const ARCHITECTURE_ANALYSIS_STEPS: ProgressStepDef[] = [
-  { id: "prompt", label: "Building architecture prompt" },
-  { id: "llm", label: "Calling language model" },
-  { id: "parse", label: "Parsing & validating response" },
+  { id: "prompt", label: "Montando prompt de arquitetura" },
+  { id: "llm", label: "Chamando o modelo de linguagem" },
+  { id: "parse", label: "Analisando e validando a resposta" },
 ];
 
 export const DOCUMENTATION_REGEN_STEPS: ProgressStepDef[] = [
-  { id: "prompt", label: "Building documentation prompt" },
-  { id: "llm", label: "Calling language model" },
-  { id: "merge", label: "Merging documentation into analysis" },
+  { id: "prompt", label: "Montando prompt de documentação" },
+  { id: "llm", label: "Chamando o modelo de linguagem" },
+  { id: "merge", label: "Mesclando documentação na análise" },
 ];
 
 export type ProcessingProgressState = {

@@ -61,7 +61,7 @@ export function DocumentationSuite(props: {
       toast({ title: t("docs.toastRefreshedTitle"), description: t("docs.toastRefreshedDesc") });
     } catch (e) {
       props.progress?.fail();
-      const msg = e instanceof Error ? e.message : "Unknown error";
+      const msg = e instanceof Error ? e.message : t("errors.unknown");
       logger.error("Documentation regeneration failed", { error: e });
       toast({ variant: "destructive", title: t("docs.toastFailTitle"), description: msg });
     } finally {

@@ -240,18 +240,7 @@ export function normalizeArchitectureAnalysis(base: ArchitectureAnalysis): Archi
 }
 
 function defaultMacroLabel(id: MacroLayerId): string {
-  switch (id) {
-    case "ui":
-      return "UI / Screens";
-    case "bll":
-      return "Business Logic";
-    case "model":
-      return "Models & Entities";
-    case "dal":
-      return "Data Access Layer";
-    case "database":
-      return "Database Layer";
-  }
+  return translate(`layer.${id}`);
 }
 
 function defaultMacroDeps(id: MacroLayerId): MacroLayerId[] {

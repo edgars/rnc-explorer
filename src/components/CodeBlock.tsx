@@ -8,9 +8,11 @@ type CodeBlockProps = {
   className?: string;
   /** Mostrar numeração quando há mais de uma linha */
   showLineNumbers?: boolean;
+  /** Se false, linhas longas não quebram (útil para scroll horizontal). Default: true */
+  wrapLongLines?: boolean;
 };
 
-export function CodeBlock({ code, language, className, showLineNumbers }: CodeBlockProps) {
+export function CodeBlock({ code, language, className, showLineNumbers, wrapLongLines = true }: CodeBlockProps) {
   const trimmed = code.replace(/\n$/, "");
   const lines = trimmed.split("\n").length;
   const lineNumbers = showLineNumbers ?? lines > 1;
@@ -21,7 +23,7 @@ export function CodeBlock({ code, language, className, showLineNumbers }: CodeBl
       style={coldarkDark}
       showLineNumbers={lineNumbers}
       wrapLines
-      wrapLongLines
+      wrapLongLines={wrapLongLines}
       PreTag="div"
       customStyle={{
         margin: 0,

@@ -6,7 +6,23 @@ import {
   type DocumentationBundle,
   type ParsedProjectSnapshot,
 } from "@/lib/architecture";
-import { fileTreeToString } from "@/lib/zipParser";
+import {
+  allIndexedPaths,
+  architectureSnippetPathPriority,
+  ARCH_MAX_CHARS_PER_SNIPPET,
+  ARCH_MAX_SNIPPET_FILES,
+  ARCH_PATH_LIST_MAX_CHARS,
+  ARCH_SNIPPET_SECTION_MAX_CHARS,
+  ARCH_TREE_MAX_LINES,
+  buildBudgetedSnippetsMarkdown,
+  buildCompactPathList,
+  DOCS_MAX_CHARS_PER_SNIPPET,
+  DOCS_MAX_SNIPPET_FILES,
+  DOCS_PATH_LIST_MAX_CHARS,
+  DOCS_SNIPPET_SECTION_MAX_CHARS,
+  DOCS_TREE_MAX_LINES,
+} from "@/lib/llmPromptBudget";
+import { fileTreeToStringBounded } from "@/lib/zipParser";
 import type { LlmConfig } from "@/lib/llmConfig";
 import { getActiveApiContext } from "@/lib/llmConfig";
 import { anthropicApiBaseUrl, geminiGenerativeBaseUrl, openAiChatBaseUrl } from "@/lib/llmUpstream";
@@ -20,20 +36,41 @@ const documentationOnlySchema = z.object({
 });
 
 export function buildArchitecturePrompt(snapshot: ParsedProjectSnapshot): { system: string; user: string } {
-  const treeText = fileTreeToString(snapshot.tree);
+  const treeText = fileTreeToStringBounded(snapshot.tree, ARCH_TREE_MAX_LINES);
   const topExtensions = Object.entries(snapshot.extensionsHistogram)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 24)
     .map(([ext, n]) => `${ext}: ${n}`)
     .join(", ");
 
-  const snippetEntries = Object.entries(snapshot.snippets).slice(0, 160);
-  const snippetsText = snippetEntries
-    .map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
-    .join("\n\n");
+  const allPaths = allIndexedPaths(snapshot);
+  const pathBlock = buildCompactPathList(allPaths, ARCH_PATH_LIST_MAX_CHARS);
+  const snippetPack = buildBudgetedSnippetsMarkdown(snapshot.snippets, {
+    maxTotalChars: ARCH_SNIPPET_SECTION_MAX_CHARS,
+    maxPerFileChars: ARCH_MAX_CHARS_PER_SNIPPET,
+    maxFiles: ARCH_MAX_SNIPPET_FILES,
+    priority: architectureSnippetPathPriority,
+  });
+  const snippetsText = snippetPack.text;
 
-  const allPaths = Object.keys(snapshot.snippets).sort((a, b) => a.localeCompare(b));
-  const pathList = allPaths.slice(0, 180).join("\n");
+  const pathListNote =
+    pathBlock.listedPaths < pathBlock.totalPaths
+      ? `\n(Nota: a lista acima contém ${pathBlock.listedPaths} de ${pathBlock.totalPaths} caminhos indexados, por limite de contexto. Em fileAnalysisDetails, prefira chaves que apareçam aqui ou caminhos inequívocos nos trechos.)`
+      : "";
+  const snippetNote =
+    snippetPack.filesIncluded < snippetPack.filesTotal
+      ? `\n(Nota: trechos de ${snippetPack.filesIncluded} arquivo(s), escolhidos por prioridade entre ${snippetPack.filesTotal} com amostra local; infira o restante pela árvore e pelos caminhos.)`
+      : "";
+
+  logger.debug("buildArchitecturePrompt sizes", {
+    treeChars: treeText.length,
+    pathListChars: pathBlock.text.length,
+    pathsListed: pathBlock.listedPaths,
+    pathsTotal: pathBlock.totalPaths,
+    snippetChars: snippetsText.length,
+    snippetFiles: snippetPack.filesIncluded,
+    snippetFilesTotal: snippetPack.filesTotal,
+  });
 
   const system = `Você é um arquiteto de software sênior. Analise o snapshot do repositório enviado e infira arquitetura, métricas, documentação e insights por arquivo.
 
@@ -53,7 +90,7 @@ Heurísticas importantes para stacks Java enterprise:
 
 Delphi e Oracle Forms:
 - .pas/.dpr com regra → bll; .dfm/.lfm ligados a UI → ui; DataModules com queries → dal ou model conforme contenham SQL/fields.
-- .fmb/.mmb/.pll Oracle Forms → preferencialmente ui (formulário) ou bll se for apenas libraries de código sem tela (use descrição no micro-nó).
+- .fmb/.mmb/.pll Oracle Forms → preferencialmente ui (formulário) ou bll se forem apenas bibliotecas de código sem tela (use descrição no micro-nó).
 
 Scripts DDL e dados:
 - Qualquer CREATE/ALTER/DROP TABLE, índices, constraints, seeds massivos em .sql → database.
@@ -84,10 +121,10 @@ Documentação (campo documentation) — strings Markdown estilo GitHub (sem JSO
 - databaseAccessStyle: SQL embutido vs procedures vs ORMs (Hibernate, EclipseLink, OpenJPA, MyBatis, jOOQ, TopLink, JDO, EF, FireDAC etc.), JDBC direto, EJB Entity/CMP, uso de JSP/JSF com backing beans, Oracle Forms runtime, Delphi BDE/FireDAC; cite DDL/migrações na camada database quando existirem.
 - externalIntegrations: REST/SOAP/XML-RPC, clientes HTTP, WSDL, webhooks.
 
-fileAnalysisDetails: mapa com chaves EXATAS de caminhos de FILE_PATH_LIST (o máximo que conseguir, priorize entrypoints e módulos grandes). Cada valor:
+fileAnalysisDetails: mapa com chaves EXATAS de caminhos listados em FILE_PATH_LIST quando possível (o máximo que conseguir, priorize entrypoints e módulos grandes). Se a lista estiver parcial por limite de contexto, priorize arquivos citados nos trechos. Cada valor:
 { "purpose": string, "layer": "ui"|"bll"|"model"|"dal"|"database", "businessRules": string[] }
 
-A saída DEVE ser um único objeto JSON (sem cercas markdown, sem comentário fora do JSON) com as chaves:
+A saída DEVE ser um único objeto JSON (sem envolver o JSON em blocos \`\`\` Markdown, sem comentário fora do JSON) com as chaves:
 projectName, detectedLanguages, summary, metrics, documentation, graph, fileAnalysisDetails`;
 
   const user = `ZIP: ${snapshot.zipName}
@@ -96,13 +133,13 @@ CLIENT_TOTAL_LOC (do analisador): ${snapshot.totalLinesOfCode}
 Histograma de extensões (top): ${topExtensions || "n/d"}
 
 FILE_PATH_LIST (use estas strings exatas como chaves em fileAnalysisDetails quando possível):
-${pathList || "(nenhum)"}
+${pathBlock.text || "(nenhum)"}${pathListNote}
 
-Árvore de diretórios (arquivos analisados):
+Árvore de diretórios (arquivos analisados, pode estar resumida):
 ${treeText || "(vazio)"}
 
-Trechos de código (truncados):
-${snippetsText || "(sem trechos)"}
+Trechos de código (amostra priorizada e limitada ao contexto do modelo):
+${snippetsText || "(sem trechos)"}${snippetNote}
 
 Instruções adicionais de stack (use ao classificar micro-nós e fileAnalysisDetails):
 - Java enterprise: discrimine JSP/JSF/Facelets, Servlets, EJBs (session/entity/message), JDBC cru, Spring (MVC, Data, JDBC), ORMs (Hibernate/JPA, EclipseLink, MyBatis), configuração JPA (persistence.xml, orm.xml).
@@ -114,24 +151,46 @@ Instruções adicionais de stack (use ao classificar micro-nós e fileAnalysisDe
 }
 
 export function buildDocumentationRefreshPrompt(snapshot: ParsedProjectSnapshot, analysis: ArchitectureAnalysis): { system: string; user: string } {
-  const treeText = fileTreeToString(snapshot.tree);
-  const snippetEntries = Object.entries(snapshot.snippets).slice(0, 120);
-  const snippetsText = snippetEntries
-    .map(([path, content]) => `### ${path}\n\`\`\`\n${content}\n\`\`\``)
-    .join("\n\n");
+  const treeText = fileTreeToStringBounded(snapshot.tree, DOCS_TREE_MAX_LINES);
+  const allPaths = allIndexedPaths(snapshot);
+  const pathBlock = buildCompactPathList(allPaths, DOCS_PATH_LIST_MAX_CHARS);
+  const snippetPack = buildBudgetedSnippetsMarkdown(snapshot.snippets, {
+    maxTotalChars: DOCS_SNIPPET_SECTION_MAX_CHARS,
+    maxPerFileChars: DOCS_MAX_CHARS_PER_SNIPPET,
+    maxFiles: DOCS_MAX_SNIPPET_FILES,
+    priority: architectureSnippetPathPriority,
+  });
+  const snippetsText = snippetPack.text;
+  const pathListNote =
+    pathBlock.listedPaths < pathBlock.totalPaths
+      ? `\n(Nota: ${pathBlock.listedPaths} de ${pathBlock.totalPaths} caminhos listados por limite de contexto.)`
+      : "";
+  const snippetNote =
+    snippetPack.filesIncluded < snippetPack.filesTotal
+      ? `\n(Nota: trechos de ${snippetPack.filesIncluded} de ${snippetPack.filesTotal} arquivos com amostra.)`
+      : "";
+
+  logger.debug("buildDocumentationRefreshPrompt sizes", {
+    treeChars: treeText.length,
+    pathListChars: pathBlock.text.length,
+    snippetChars: snippetsText.length,
+  });
 
   const system = `Você atualiza a documentação técnica de uma base já analisada. Produza um único objeto JSON com APENAS a chave "documentation" contendo seis strings em Markdown:
 techOverview, appPurpose, actors, intents, databaseAccessStyle, externalIntegrations.
-Use Markdown com títulos e listas. Todo o texto em português do Brasil. Sem cercas markdown em volta do JSON.`;
+Use Markdown com títulos e listas. Todo o texto em português do Brasil. Não envolva o JSON em blocos \`\`\` Markdown.`;
 
   const user = `Resumo existente: ${analysis.summary}
 Linguagens detectadas: ${analysis.detectedLanguages.join(", ")}
 
-Árvore:
+FILE_PATH_LIST:
+${pathBlock.text || "(nenhum)"}${pathListNote}
+
+Árvore (pode estar resumida):
 ${treeText}
 
-Trechos:
-${snippetsText}`;
+Trechos (amostra priorizada):
+${snippetsText}${snippetNote}`;
 
   return { system, user };
 }
@@ -271,7 +330,7 @@ async function callGemini(opts: {
       contents: [
         {
           role: "user",
-          parts: [{ text: `${opts.user}\n\nRetorne APENAS JSON válido (sem cercas markdown).\n` }],
+          parts: [{ text: `${opts.user}\n\nRetorne APENAS JSON válido (sem blocos \`\`\` Markdown ao redor).\n` }],
         },
       ],
       generationConfig: {
